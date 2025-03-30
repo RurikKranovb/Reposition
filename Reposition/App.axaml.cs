@@ -6,6 +6,10 @@ using System.Linq;
 using Avalonia.Markup.Xaml;
 using Reposition.ViewModels;
 using Reposition.Views;
+using Microsoft.Extensions.DependencyInjection;
+using Reposition.Infrastructure.Interface;
+using Reposition.Infrastructure.Service;
+using System;
 
 namespace Reposition;
 
@@ -27,10 +31,19 @@ public partial class App : Application
             {
                 DataContext = new MainWindowViewModel(),
             };
+
+            var services = new ServiceCollection();
+
+            services.AddSingleton<IFileService>(x => new FileService(desktop.MainWindow));
+
+            Services = services.BuildServiceProvider();
         }
 
         base.OnFrameworkInitializationCompleted();
     }
+
+    public new static App? Current => Application.Current as App;
+    public IServiceProvider? Services { get; private set; }
 
     private void DisableAvaloniaDataAnnotationValidation()
     {
