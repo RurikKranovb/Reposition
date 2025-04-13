@@ -35,19 +35,12 @@ namespace Reposition.ViewModels
                 var file = await filesService.OpenFileAsync();
                 if (file is null) return;
 
-                // Limit the text file to 1MB so that the demo wont lag.
-                if ((await file.GetBasicPropertiesAsync()).Size <= 1024 * 1024 * 1)
-                {
-                    await using var readStream = await file.OpenReadAsync();
-                    using var reader = new StreamReader(readStream);
-                    FileText = await reader.ReadToEndAsync(token);
 
-                    //RepositionFile(FileText, token);
-                }
-                else
-                {
-                    throw new Exception("File exceeded 1MB limit.");
-                }
+                await using var readStream = await file.OpenReadAsync();
+                using var reader = new StreamReader(readStream);
+                FileText = await reader.ReadToEndAsync(token);
+
+
             }
             catch (Exception e)
             {
@@ -63,18 +56,19 @@ namespace Reposition.ViewModels
             var fileTextRegex = new Regex(@"(?<=X)(\d+\.?\d*)");
 
             if (fileText == null) return;
+
+            var reposition = repositionRegex.Matches(fileText).SingleOrDefault()?.ToString()?.Replace("-", "");
+
+            if (reposition == null) return;
+
             try
             {
-                var reposition = repositionRegex.Matches(fileText).SingleOrDefault()?.ToString()?.Replace("-", "");
 
                 var list = fileTextRegex.Matches(fileText).ToList();
 
                 foreach (var item in list)
                 {
-
                     var index = fileText.IndexOf(item.ToString(), StringComparison.Ordinal);
-
-                    if (reposition == null) return;
 
                     //double.TryParse(item.Value, out var value);
                     //double.TryParse(reposition, out var repositionValue);
@@ -106,29 +100,22 @@ namespace Reposition.ViewModels
             try
             {
                 var filesService = App.Current?.Services?.GetService<IFileService>();
+                
                 if (filesService is null) throw new NullReferenceException("Missing File Service instance.");
 
                 var file = await filesService.SaveFileAsync();
+                
                 if (file is null) return;
 
+                var stream = new MemoryStream(Encoding.Default.GetBytes((string)FileText));
+                await using var writeStream = await file.OpenWriteAsync();
+                await stream.CopyToAsync(writeStream);
 
-                // Limit the text file to 1MB so that the demo wont lag.
-                if (FileText?.Length <= 1024 * 1024 * 1)
-                {
-                    var stream = new MemoryStream(Encoding.Default.GetBytes((string)FileText));
-                    await using var writeStream = await file.OpenWriteAsync();
-                    await stream.CopyToAsync(writeStream);
-                }
-                else
-                {
-                    throw new Exception("File exceeded 1MB limit.");
-                }
             }
             catch (Exception e)
             {
                 ErrorMessages?.Add(e.Message);
             }
         }
-
     }
 }
